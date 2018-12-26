@@ -15,7 +15,7 @@ uint createHeroFee = 888; //currently in wei, should be changed to TRX
 uint fee8Hours = 100;
 uint fee12Hours = 200;
 uint fee24Hours = 300;
-uint siegeBattleFee = 333;
+uint siegeBattleFee = 333; // change 
 uint banditBattleFee = 100;
 uint strongholdBattleFee = 200;
 
@@ -412,5 +412,21 @@ function randomFromAddress(address entropy) private view returns (uint8) {
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// TODO:
+
+// ADD COFFER TO CITY struct
+
+// add function "register city" onlyOwner payable (id, size, cofferSize)
+
+// 50% of fee goes to coffer
+
+// drop coffer (every 25 000 blocks) ==> 30% coffer goes to cityOwner
+
+//-----------------------------------------------------------------------
+
+// ADD function "leave stronghold" ==> make stronghold empty
+
+
 
 }
