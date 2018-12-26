@@ -1,3 +1,7 @@
+pragma solidity ^0.4.24;
+
+import "browser/Ownable.sol";
+
 contract LordsContract is Ownable {
 
 
@@ -14,9 +18,9 @@ function withdraw(uint amount) onlyOwner public returns(bool) { // only contract
         return true;    
 }
 
-function random(uint entropy) private view returns (uint8) {   // NOTE: This random generator is not entirely safe and could potentially compromise the game, 
+function random(uint entropy, uint number) private view returns (uint8) {   // NOTE: This random generator is not entirely safe and could potentially compromise the game, 
                                                                // I would recommend game owners to use solutions from trusted oracles
-       return uint8(1 + uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, entropy)))%3);
+       return uint8(1 + uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, entropy)))%number);
    }
 
 function randomFromAddress(address entropy) private view returns (uint8) {  
@@ -27,7 +31,7 @@ function randomFromAddress(address entropy) private view returns (uint8) {
 
 ///////////////////////////////////// HERO STRUCT ////////////////////////////////////////////////    
 
-// TODO: use item functionality 
+// TODO: implement item alike create hero functionality 
 
     struct Hero{
         address OWNER;     // Wallet address of Player that owns Hero
@@ -42,10 +46,12 @@ function randomFromAddress(address entropy) private view returns (uint8) {
     
     mapping (uint => Hero) heroes;
     
-    function putHero(uint id, uint troopsCap, uint leadership,  uint intelligence, uint strength, uint speed, uint defense) public { 
+    function putHero(uint id, address owner, uint troopsCap, uint leadership,  uint intelligence, uint strength, uint speed, uint defense) public onlyOwner { 
+            require(id > 0,
+            "Please insert id higher than 0");
             require(heroes[id].OWNER == 0x0000000000000000000000000000000000000000,
             "Hero with this id already exists");
-            address owner = msg.sender;
+
             heroes[id] = Hero(owner, troopsCap, leadership,  intelligence, strength, speed, defense);
     }
     
@@ -76,9 +82,9 @@ function randomFromAddress(address entropy) private view returns (uint8) {
 
     // creationType StrongholdReward: 0, createHero 1
     function putItem(uint creationType, uint id, bytes32 statType, bytes32 quality, uint generation, uint statValue, uint level, uint xp, address owner ) public onlyOwner { // only contract owner can put new items
+            require(id > 0,
+            "Please insert id higher than 0");
 
-            // TODO: add given for Stronghold reward OR Hero Creation List
-            
             items[id] = Item(statType, quality, generation, statValue, level, xp, owner);
             
             if (creationType == 0){
@@ -123,17 +129,17 @@ function randomFromAddress(address entropy) private view returns (uint8) {
                     item.LEVEL = item.LEVEL + 1;
                     // return "Item level is increased by 1";
             } 
-            // Increase Statы based on Quality
+            // Increase Stats based on Quality
             if (item.QUALITY == 1){
-                item.STAT_VALUE = item.STAT_VALUE + random(seed);
+                item.STAT_VALUE = item.STAT_VALUE + random(seed, 3);
             } else if (item.QUALITY == 2){
-                item.STAT_VALUE = item.STAT_VALUE + random(seed) + 3;
+                item.STAT_VALUE = item.STAT_VALUE + random(seed, 3) + 3;
             } else if (item.QUALITY == 2){
-                item.STAT_VALUE = item.STAT_VALUE + random(seed) + 6;
+                item.STAT_VALUE = item.STAT_VALUE + random(seed, 3) + 6;
             } else if (item.QUALITY == 2){
-                item.STAT_VALUE = item.STAT_VALUE + random(seed) + 9;
+                item.STAT_VALUE = item.STAT_VALUE + random(seed, 3) + 9;
             } else if (item.QUALITY == 2){
-                item.STAT_VALUE = item.STAT_VALUE + random(seed) + 12;
+                item.STAT_VALUE = item.STAT_VALUE + random(seed, 3) + 12;
             }
 
         }
@@ -159,7 +165,7 @@ function randomFromAddress(address entropy) private view returns (uint8) {
 
     function auctionBegin(uint itemId, uint price, uint auctionDuration, uint city) public { // START AUCTION FUNCTION
             require(items[itemId].OWNER == msg.sender, 
-            "You don't have this item");
+            "You don't own this item");
             require(auctionDuration == duration8Hours || auctionDuration == duration12Hours || auctionDuration == duration24Hours,
             "Incorrect auction duration");
             address seller = msg.sender; 
@@ -209,6 +215,8 @@ function randomFromAddress(address entropy) private view returns (uint8) {
     mapping(uint => City) cities;
 
     function changeCityOwner(uint id, uint hero, uint size) public {
+            require(id > 0,
+            "Please insert id higher than 0");
             require(heroes[hero].OWNER == msg.sender,
             "You don't own this hero");
             cities[id] = City(id, hero, size);
@@ -237,7 +245,10 @@ function randomFromAddress(address entropy) private view returns (uint8) {
     function changeStrongholdOwner(uint id, uint hero) public {
             require(heroes[hero].OWNER != 0x0000000000000000000000000000000000000000,
             "There is no such hero");
-            strongholds[id] = Stronghold(id, hero, block.number);
+            require(heroes[hero].OWNER == msg.sender,
+            "You dont own this hero");
+            
+            strongholds[id] = Stronghold(id, hero, block.number); // Stronghold ID is the only id that starts from 0, all other id's start from 1
     }
     
     function getStrongholdData(uint shId) public view returns(uint, uint){
@@ -257,10 +268,10 @@ function randomFromAddress(address entropy) private view returns (uint8) {
     
     mapping (uint => StrongholdReward) stronghold_rewards;
     
-    function addStrongholdReward(uint id) public returns(bool){
+    function addStrongholdReward(uint id) public onlyOwner returns(bool){
         stronghold_rewards[id] = StrongholdReward(id, block.number);
     }
-
+    
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /////////////////////////////////////// BATTLELOG STRUCT /////////////////////////////////////////////////////////
@@ -325,26 +336,28 @@ function randomFromAddress(address entropy) private view returns (uint8) {
         uint HeroId;
     }
 
-    // TODO:
-        
-    
-    // select randomly stronghold
-    
-    // check if hero exist ==> we give him item
-    
     uint blockNumber = block.number;
     uint isAllowed = 1;
-    uint blockDistance = 10; // change to 120
+    uint blockDistance = 3; // change to 120
 
 
-    function dropItems() public returns(uint) {
+    function dropItems(uint itemNumber) public onlyOwner returns(string) {
+        // TODO: check if item is StrongholdReward
+        require(stronghold_rewards[itemNumber].ID > 0,
+        "Not a reward item");
         require(block.number-blockNumber > blockDistance,
-                "Please try again later");
-        blockNumber = block.number; // this function can be called every "blockDistance" block
-            
-        return (genesis);
-        
-        
+        "Please try again later");
+                
+        blockNumber = block.number; // this function can be called every "blockDistance" blocks
+        uint strongholdNumber = random(randomFromAddress(msg.sender), 10)-1; // select randomly stronghold
+        uint strongholdHero = strongholds[strongholdNumber].Hero;
+        if (strongholdHero > 0){
+           items[itemNumber].OWNER = heroes[strongholdHero].OWNER;
+           delete stronghold_rewards[itemNumber];//delete item from strongHold reward struct
+           return("Supreme success!"); // check if hero exist
+        } else {
+            return ("No success");
+        }
     }
 
 
