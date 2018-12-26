@@ -11,6 +11,14 @@ uint duration8Hours = 28800;      // 28_800 Seconds are 8 hours
 uint duration12Hours = 43200;     // 43_200 Seconds are 12 hours
 uint duration24Hours = 86400;     // 86_400 Seconds are 24 hours
 
+uint createHeroFee = 888; //currently in wei, should be changed to TRX
+uint fee8Hours = 100;
+uint fee12Hours = 200;
+uint fee24Hours = 300;
+uint siegeBattleFee = 333;
+uint banditBattleFee = 100;
+uint strongholdBattleFee = 200;
+
 
 function withdraw(uint amount) onlyOwner public returns(bool) { // only contract's owner can withdraw to owner's address
         address owner_ = owner();
@@ -29,9 +37,31 @@ function randomFromAddress(address entropy) private view returns (uint8) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////    
 
-///////////////////////////////////// HERO STRUCT ////////////////////////////////////////////////    
+///////////////////////////////////// PAYMENT STRUCT ///////////////////////////////////////////////    
 
-// TODO: implement item alike create hero functionality 
+    struct Payment{
+        address PAYER;
+        uint HASH;
+    }
+    
+    mapping (uint => Payment) payments;
+    
+    function heroCreationPayment() public payable returns(uint){
+        require(msg.value == createHeroFee,
+        "Payment fee does not match");
+        uint hash = uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, msg.value, msg.sender)));
+        payments[hash] = Payment(msg.sender, hash);
+        return hash;
+    }
+    
+    function getPayments(uint hash) public view returns(address, uint){
+        return(payments[hash].PAYER, payments[hash].HASH);
+    } //TODO: add event
+
+////////////////////////////////////////////////////////////////////////////////////////////////////    
+
+
+///////////////////////////////////// HERO STRUCT ////////////////////////////////////////////////    
 
     struct Hero{
         address OWNER;     // Wallet address of Player that owns Hero
@@ -46,12 +76,15 @@ function randomFromAddress(address entropy) private view returns (uint8) {
     
     mapping (uint => Hero) heroes;
     
-    function putHero(uint id, address owner, uint troopsCap, uint leadership,  uint intelligence, uint strength, uint speed, uint defense) public onlyOwner { 
-            require(id > 0,
+    function putHero(uint paymentHash, uint id, address owner, uint troopsCap, uint leadership,  uint intelligence, uint strength, uint speed, uint defense) public onlyOwner { 
+            require(id > 0, 
             "Please insert id higher than 0");
+            require(payments[paymentHash].PAYER == owner, 
+            "Payer and owner do not match");
             require(heroes[id].OWNER == 0x0000000000000000000000000000000000000000,
             "Hero with this id already exists");
-
+            
+            delete payments[paymentHash]; // delete payment hash after the hero was created in order to prevent double spend
             heroes[id] = Hero(owner, troopsCap, leadership,  intelligence, strength, speed, defense);
     }
     
@@ -163,11 +196,21 @@ function randomFromAddress(address entropy) private view returns (uint8) {
 
     mapping (uint => MarketItemData) market_items_data;
 
-    function auctionBegin(uint itemId, uint price, uint auctionDuration, uint city) public { // START AUCTION FUNCTION
+    function auctionBegin(uint itemId, uint price, uint auctionDuration, uint city) public payable { // START AUCTION FUNCTION
             require(items[itemId].OWNER == msg.sender, 
             "You don't own this item");
             require(auctionDuration == duration8Hours || auctionDuration == duration12Hours || auctionDuration == duration24Hours,
             "Incorrect auction duration");
+            if (auctionDuration == duration8Hours){
+                require(msg.value == fee8Hours,
+                "Incorrect fee amount");
+            } else if (auctionDuration == duration12Hours){
+                require(msg.value == fee12Hours,
+                "Incorrect fee amount");
+            } else if (auctionDuration == duration24Hours){
+                require(msg.value == fee24Hours,
+                "Incorrect fee amount");
+            }
             address seller = msg.sender; 
             uint auctionStartedTime = now;
             market_items_data[itemId] = MarketItemData(price, auctionDuration, auctionStartedTime, city, seller);
@@ -293,37 +336,46 @@ function randomFromAddress(address entropy) private view returns (uint8) {
     mapping(uint => BattleLog) battle_logs;
     
     function addBattleLog(uint id, uint[] resultType, uint attacker, uint[] attackerTroops, uint[] attackerItems, 
-                          uint defenderObject, uint defender, uint[] defenderTroops, uint[] defenderItems) public returns (bool){
+                          uint defenderObject, uint defender, uint[] defenderTroops, uint[] defenderItems) public payable returns (bool){
                         
-                        require(resultType.length <=2 && resultType[0] <= 1 && resultType[1] <= 2 ,
-                                "Incorrect number of result parametres or incorrect parametres");
-                        require(attackerTroops.length <=2,
-                                "Incorrect number of arguments for attackerTroops");
-                        require(attackerItems.length <= 5 && defenderItems.length <=5,
-                                "incorrect number of attacker items");
-                        require(defenderTroops.length <=2,
-                                "Incorrect number of arguments for defenderTroops");
-                        require(defenderItems.length <= 5 && defenderItems.length <=5,
-                                "incorrect number of defender items");
+            require(resultType.length <=2 && resultType[0] <= 1 && resultType[1] <= 2 ,
+                    "Incorrect number of result parametres or incorrect parametres");
+            require(attackerTroops.length <=2,
+                    "Incorrect number of arguments for attackerTroops");
+            require(attackerItems.length <= 5 && defenderItems.length <=5,
+                    "incorrect number of attacker items");
+            require(defenderTroops.length <=2,
+                    "Incorrect number of arguments for defenderTroops");
+            require(defenderItems.length <= 5 && defenderItems.length <=5,
+                    "incorrect number of defender items");
+            
+            if (resultType[1] == 0){ // siegeBattleFee if atack City
+                require(msg.value == siegeBattleFee,
+                "Incorrect fee amount");
+            } else if (resultType[1] == 1){ // strongholdBattleFee if atack Stronghold
+                require(msg.value == strongholdBattleFee,
+                "Incorrect fee amount");
+            } else if (resultType[2] == 0){ // banditBattleFee if atack Bandit Camp
+                require(msg.value == banditBattleFee,
+                "Incorrect fee amount");
+            }
 
-                        // address attackerOwner = heroes[attacker].OWNER;
-                        // address defenderOwner = heroes[defender].OWNER;
-                        uint time = now;
-                        
-                        battle_logs[id] = BattleLog(resultType, attacker, attackerTroops, 
-                                                    attackerItems, defenderObject, defender, 
-                                                    defenderTroops, defenderItems, time); //add data to the struct 
-                                                    
-                        if (resultType[0] == 0 && resultType[1] == 1){ 
-                            strongholds[defenderObject].Hero = attacker; // if attack Stronghold && WIN ==> change stronghold Owner
-                            return(true);
-                        } else if (resultType[0] == 0 && resultType[1] == 0) {
-                            cities[defenderObject].Hero = attacker; // else if attack City && WIN ==> change city owner
-                            return(true);
-                        } else if (resultType[1] == 2){
-                            updateItemsStats(attackerItems);     // else if attackBandit ==> update item stats
-                        } 
-                        return true;
+            uint time = now;
+                            
+            battle_logs[id] = BattleLog(resultType, attacker, attackerTroops, 
+                                        attackerItems, defenderObject, defender, 
+                                        defenderTroops, defenderItems, time); //add data to the struct 
+                                        
+            if (resultType[0] == 0 && resultType[1] == 1){ 
+                strongholds[defenderObject].Hero = attacker; // if attack Stronghold && WIN ==> change stronghold Owner
+                return(true);
+            } else if (resultType[0] == 0 && resultType[1] == 0) {
+                cities[defenderObject].Hero = attacker; // else if attack City && WIN ==> change city owner
+                return(true);
+            } else if (resultType[1] == 2){
+                updateItemsStats(attackerItems);     // else if attackBandit ==> update item stats
+            } 
+            return true;
     }
 
 
@@ -337,12 +389,10 @@ function randomFromAddress(address entropy) private view returns (uint8) {
     }
 
     uint blockNumber = block.number;
-    uint isAllowed = 1;
-    uint blockDistance = 3; // change to 120
+    uint blockDistance = 120; 
 
 
     function dropItems(uint itemNumber) public onlyOwner returns(string) {
-        // TODO: check if item is StrongholdReward
         require(stronghold_rewards[itemNumber].ID > 0,
         "Not a reward item");
         require(block.number-blockNumber > blockDistance,
@@ -362,16 +412,5 @@ function randomFromAddress(address entropy) private view returns (uint8) {
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// TODO:
-
-// cancell auction
-
-// CityPayout
-// LogStronghold Leave
-// put city data `9invoked by smartcontract owner
-// cancel auction
-
-
 
 }
