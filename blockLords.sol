@@ -316,7 +316,7 @@ function randomFromAddress(address entropy) private view returns (uint8) {
     }
 
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////// DROP DATA STRUCT ///////////////////////////////////////////////////
     
     struct DropData{       // Information of Item that player can get as a reward.
         uint Block;        // Blockchain Height, in which player got Item as a reward
@@ -327,32 +327,30 @@ function randomFromAddress(address entropy) private view returns (uint8) {
 
     // TODO:
         
-    // create function that you would be able to call every 160 blocks
     
     // select randomly stronghold
     
     // check if hero exist ==> we give him item
     
-    uint genesis = block.number;
+    uint blockNumber = block.number;
     uint isAllowed = 1;
-    uint blockDistance = 3; // change to 160
+    uint blockDistance = 10; // change to 120
 
 
-    // function dropItems() public returns(uint, uint, string) {
-
-    //     uint blockNumber = block.number;
-    //     require((blockNumber-genesis)*isAllowed < isAllowed*blockDistance,
-    //             "Please try later");
+    function dropItems() public returns(uint) {
+        require(block.number-blockNumber > blockDistance,
+                "Please try again later");
+        blockNumber = block.number; // this function can be called every "blockDistance" block
+            
+        return (genesis);
         
-    //     return (blockNumber-genesis, isAllowed*blockDistance,"do something");
         
-        
-    // }
-
-// TODO:
+    }
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// TODO:
 
 // cancell auction
 
