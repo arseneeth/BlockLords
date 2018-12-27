@@ -246,6 +246,14 @@ function randomFromAddress(address entropy) private view returns (uint8) {
         
     }
 
+    function auctionCancel(uint itemId) public returns(bool){
+        require(market_items_data[itemId].Seller == msg.sender,
+                "You do not own this item");
+        delete market_items_data[itemId];
+        return true;
+    }
+
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   
 ///////////////////////////////////// CITY STRUCT //////////////////////////////////////////////////////////   
