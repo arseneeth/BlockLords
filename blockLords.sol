@@ -19,8 +19,11 @@ uint siegeBattleFee = 300;
 uint banditBattleFee = 100;
 uint strongholdBattleFee = 200;
 
+uint coffersTotal = allCoffers();
 
 function withdraw(uint amount) onlyOwner public returns(bool) { // only contract's owner can withdraw to owner's address
+        // require(amount < address(this).balance-coffersTotal,
+        // "balance is insufficient");  // Umcomment this requirement if you want the amount stored in coffers to be not withdrawable
         address owner_ = owner();
         owner_.transfer(amount);
         return true;    
@@ -267,10 +270,17 @@ function randomFromAddress(address entropy) private view returns (uint8) {
         cities[id] = City(id, blankHero, size, cofferSize);
     }
 
-
     function getCityData(uint id) public view returns(uint, uint){
         return (cities[id].Hero, cities[id].Size);
         
+    }
+    
+    function allCoffers() public view returns(uint){
+        uint total = 0;
+        for (uint i=0; i < cities.length ; i++){
+            total += cities[i].CofferSize;
+        }
+        return total;
     }
     
     uint cofferBlockNumber = block.number;
@@ -321,6 +331,15 @@ function randomFromAddress(address entropy) private view returns (uint8) {
     
     function getStrongholdData(uint shId) public view returns(uint, uint){
             return(strongholds[shId].Hero, strongholds[shId].CreatedBlock);
+    }
+    
+    function leaveStronghold(uint shId, uint heroId) public returns(bool){
+            require(strongholds[shId].Hero == heroId,
+            "Selected hero is not in the stronghold");
+             require(heroes[heroId].OWNER == msg.sender,
+            "You do not own this hero");
+            strongholds[shId].Hero = 0;
+            return true;
     }
     
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -436,13 +455,6 @@ function randomFromAddress(address entropy) private view returns (uint8) {
         }
     }
 
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// TODO:
-
-//-----------------------------------------------------------------------
-
-// ADD function "leave stronghold" ==> make stronghold empty
 
 }
