@@ -15,7 +15,7 @@ uint createHeroFee = 888; //currently in wei, should be changed to TRX
 uint fee8Hours = 100;
 uint fee12Hours = 200;
 uint fee24Hours = 300;
-uint siegeBattleFee = 333; // change 
+uint siegeBattleFee = 300;
 uint banditBattleFee = 100;
 uint strongholdBattleFee = 200;
 
@@ -27,7 +27,7 @@ function withdraw(uint amount) onlyOwner public returns(bool) { // only contract
 }
 
 function random(uint entropy, uint number) private view returns (uint8) {   // NOTE: This random generator is not entirely safe and could potentially compromise the game, 
-                                                               // I would recommend game owners to use solutions from trusted oracles
+                                                                            // I would recommend game owners to use solutions from trusted oracles
        return uint8(1 + uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, entropy)))%number);
    }
 
@@ -71,7 +71,7 @@ function randomFromAddress(address entropy) private view returns (uint8) {
         uint STRENGTH;     // Strength Stat value
         uint SPEED;        // Speed Stat value
         uint DEFENSE;      // Defense Stat value
-        // bytes32 TX;      // Transaction ID where Hero creation was recorded
+        // bytes32 TX;     // Transaction ID where Hero creation was recorded
     }
     
     mapping (uint => Hero) heroes;
@@ -249,27 +249,52 @@ function randomFromAddress(address entropy) private view returns (uint8) {
 
     struct City{
         
-        uint ID;
-        uint Hero;
+        uint ID; // city ID
+        uint Hero;  // id of the hero owner
         uint Size; // BIG, MEDIUM, SMALL
+        uint CofferSize; // size of the city coffer
         
     }
 
-    mapping(uint => City) cities;
+    City[16] public cities;
 
-    function changeCityOwner(uint id, uint hero, uint size) public {
-            require(id > 0,
-            "Please insert id higher than 0");
-            require(heroes[hero].OWNER == msg.sender,
-            "You don't own this hero");
-            cities[id] = City(id, hero, size);
+    mapping(uint => City[16]) public idToCity;
+
+    function putCity(uint id, uint size, uint cofferSize) public payable onlyOwner {
+        require(msg.value == cofferSize,
+                "msg.value does not match cofferSize");
+        uint blankHero = 0;
+        cities[id] = City(id, blankHero, size, cofferSize);
     }
-    
+
+
     function getCityData(uint id) public view returns(uint, uint){
         return (cities[id].Hero, cities[id].Size);
         
     }
+    
+    uint cofferBlockNumber = block.number;
+    uint CofferBlockDistance = 25000; 
 
+    function dropCoffer() public returns(string){   // drop coffer (every 25 000 blocks) ==> 30% coffer goes to cityOwner
+        require(block.number-cofferBlockNumber > CofferBlockDistance,
+        "Please try again later");
+        
+        cofferBlockNumber = block.number; // this function can be called every "cofferBlockNumber" blocks
+        uint cityNumber = random(randomFromAddress(msg.sender), 16)-1; // select randomly stronghold
+        uint cityHero = cities[cityNumber].Hero;
+        address heroOwner = heroes[cityHero].OWNER;
+        uint transferValue = cities[cityNumber].CofferSize/3;
+        if (cityHero > 0){
+           heroOwner.transfer(transferValue);
+           return("Supreme success!"); 
+        } else {
+            return ("No success");
+        }
+    }
+
+    
+    
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     
 ///////////////////////////////////// STRONGHOLD STRUCT //////////////////////////////////////////////////////////   
@@ -368,12 +393,13 @@ function randomFromAddress(address entropy) private view returns (uint8) {
                                         
             if (resultType[0] == 0 && resultType[1] == 1){ 
                 strongholds[defenderObject].Hero = attacker; // if attack Stronghold && WIN ==> change stronghold Owner
-                return(true);
             } else if (resultType[0] == 0 && resultType[1] == 0) {
-                cities[defenderObject].Hero = attacker; // else if attack City && WIN ==> change city owner
-                return(true);
+                cities[defenderObject].Hero = attacker; // else if attack City && WIN ==> change city owner 
+                cities[defenderObject].CofferSize += (siegeBattleFee/2); // 50% of attack fee goes to coffer
             } else if (resultType[1] == 2){
                 updateItemsStats(attackerItems);     // else if attackBandit ==> update item stats
+            } else if (resultType[0] == 1 && resultType[1] == 0) {
+                cities[defenderObject].CofferSize += (siegeBattleFee/2); // 50% of attack fee goes to coffer
             } 
             return true;
     }
@@ -415,18 +441,8 @@ function randomFromAddress(address entropy) private view returns (uint8) {
 
 // TODO:
 
-// ADD COFFER TO CITY struct
-
-// add function "register city" onlyOwner payable (id, size, cofferSize)
-
-// 50% of fee goes to coffer
-
-// drop coffer (every 25 000 blocks) ==> 30% coffer goes to cityOwner
-
 //-----------------------------------------------------------------------
 
 // ADD function "leave stronghold" ==> make stronghold empty
-
-
 
 }
