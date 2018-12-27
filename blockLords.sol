@@ -291,7 +291,7 @@ function randomFromAddress(address entropy) private view returns (uint8) {
         "Please try again later");
         
         cofferBlockNumber = block.number; // this function can be called every "cofferBlockNumber" blocks
-        uint cityNumber = random(randomFromAddress(msg.sender), 16)-1; // select randomly stronghold
+        uint cityNumber = random(randomFromAddress(msg.sender), 16)-1; // select randomly city
         uint cityHero = cities[cityNumber].Hero;
         address heroOwner = heroes[cityHero].OWNER;
         uint transferValue = cities[cityNumber].CofferSize/3;
