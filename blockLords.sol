@@ -286,24 +286,22 @@ function randomFromAddress(address entropy) private view returns (uint8) {
     uint cofferBlockNumber = block.number;
     uint CofferBlockDistance = 25000; 
 
-    function dropCoffer() public returns(string){   // drop coffer (every 25 000 blocks) ==> 30% coffer goes to cityOwner
+    function dropCoffer() public {   // drop coffer (every 25 000 blocks) ==> 30% coffer goes to cityOwner
         require(block.number-cofferBlockNumber > CofferBlockDistance,
         "Please try again later");
         
         cofferBlockNumber = block.number; // this function can be called every "cofferBlockNumber" blocks
-        uint cityNumber = random(randomFromAddress(msg.sender), 16)-1; // select randomly city
-        uint cityHero = cities[cityNumber].Hero;
-        address heroOwner = heroes[cityHero].OWNER;
-        uint transferValue = cities[cityNumber].CofferSize/3;
-        if (cityHero > 0){
-           heroOwner.transfer(transferValue);
-           return("Supreme success!"); 
-        } else {
-            return ("No success");
+
+        for (uint cityNumber=0; cityNumber < cities.length ; cityNumber++){ // loop through each city
+
+            uint cityHero = cities[cityNumber].Hero;
+            address heroOwner = heroes[cityHero].OWNER;
+            uint transferValue = cities[cityNumber].CofferSize/3;
+            if (cityHero > 0){
+                heroOwner.transfer(transferValue);
+            } 
         }
     }
-
-    
     
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     
